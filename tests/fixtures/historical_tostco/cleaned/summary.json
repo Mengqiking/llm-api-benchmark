@@ -1,0 +1,50 @@
+{
+  "requests": 3,
+  "success": 3,
+  "failure": 0,
+  "suite_status": {
+    "cache": "3/3 成功"
+  },
+  "cache": {
+    "attempted": 3,
+    "success": 3,
+    "request_hits": 3,
+    "request_hit_rate": 1.0,
+    "post_cold_attempted": 2,
+    "post_cold_hits": 2,
+    "ordinary_input_tokens": 5115,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 3392,
+    "total_input_tokens": 8507,
+    "token_hit_rate": 0.3987304572704831,
+    "requests": [
+      {
+        "sequence": 1,
+        "success": true,
+        "input_tokens": 1705,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 64,
+        "cache_hit": true,
+        "total_ms": 1700.78
+      },
+      {
+        "sequence": 2,
+        "success": true,
+        "input_tokens": 1705,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1664,
+        "cache_hit": true,
+        "total_ms": 1379.646
+      },
+      {
+        "sequence": 3,
+        "success": true,
+        "input_tokens": 1705,
+        "cache_creation_input_tokens": 0,
+        "cache_read_input_tokens": 1664,
+        "cache_hit": true,
+        "total_ms": 1528.005
+      }
+    ]
+  }
+}

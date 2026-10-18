@@ -1,0 +1,12 @@
+{
+  "id": "shuyanai",
+  "display_name": "ShuyanAI",
+  "base_url": "https://platform.shuyanai.com/v1",
+  "default_model": "kimi-k3",
+  "protocols": ["openai"],
+  "api_key_env": "SHUYANAI_API_KEY",
+  "input_token_semantics": {
+    "openai": "includes_cache"
+  },
+  "gateway_cache_fields": []
+}

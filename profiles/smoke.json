@@ -1,0 +1,23 @@
+{
+  "suites": [
+    "smoke"
+  ],
+  "timeout_seconds": 120,
+  "input_sizes": [
+    1024
+  ],
+  "concurrency_levels": [
+    1
+  ],
+  "samples_per_group": 1,
+  "reasoning_samples": 1,
+  "max_output_tokens": 64,
+  "cache": {
+    "mode": "auto",
+    "cold_start_requests": 1,
+    "warm_requests": 2,
+    "unique_prefix_per_run": true,
+    "varying_suffix": true,
+    "stream": true
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "id": "tostco",
+  "display_name": "Tostco",
+  "base_url": "https://tostco.ai/v1",
+  "default_model": "kimi-k3",
+  "protocols": [
+    "openai",
+    "anthropic"
+  ],
+  "api_key_env": "TOSTCO_API_KEY",
+  "extra_headers": {},
+  "protocol_options": {},
+  "input_token_semantics": {
+    "anthropic": "unknown",
+    "openai": "includes_cache"
+  },
+  "cache_metric_source": "auto",
+  "gateway_cache_fields": [
+    "claude_cache_creation_1h_tokens",
+    "claude_cache_creation_5_m_tokens"
+  ]
+}

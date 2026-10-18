@@ -1,0 +1,51 @@
+[
+  {
+    "name": "SampleFile-100MB",
+    "set": "controlled",
+    "expectedBytes": 104035209,
+    "url": "https://samplefile.com/static/samples/video/mp4/mp4_sample_file_100MB.mp4",
+    "notes": "Same SampleFile size ladder; previously failed with media decode limits."
+  },
+  {
+    "name": "SampleFile-50MB",
+    "set": "controlled",
+    "expectedBytes": 52428800,
+    "url": "https://samplefile.com/static/samples/video/mp4/mp4_sample_file_50MB.mp4",
+    "notes": "Same SampleFile size ladder; previously succeeded."
+  },
+  {
+    "name": "SampleFile-25MB",
+    "set": "controlled",
+    "expectedBytes": 26214400,
+    "url": "https://samplefile.com/static/samples/video/mp4/mp4_sample_file_25MB.mp4",
+    "notes": "Same SampleFile size ladder; previously succeeded."
+  },
+  {
+    "name": "SampleFile-10MB",
+    "set": "controlled",
+    "expectedBytes": 10485760,
+    "url": "https://samplefile.com/static/samples/video/mp4/mp4_sample_file_10MB.mp4",
+    "notes": "Same SampleFile size ladder; previously succeeded."
+  },
+  {
+    "name": "PSU-93.811MiB",
+    "set": "psu",
+    "expectedBytes": 98367994,
+    "url": "https://www.dirtandgravel.psu.edu/docs/Webinars/Webinar_Structural_Infiltration_2_20_2025.mp4",
+    "notes": "Long webinar; experimental only. Previously failed with media decode limits."
+  },
+  {
+    "name": "PSU-83.369MiB",
+    "set": "psu",
+    "expectedBytes": 87418228,
+    "url": "https://www.dirtandgravel.psu.edu/docs/Webinars/Webinar_DSA_6_15_2016.mp4",
+    "notes": "Long webinar; experimental only. Previously failed with media decode limits."
+  },
+  {
+    "name": "PSU-72.892MiB",
+    "set": "psu",
+    "expectedBytes": 76433087,
+    "url": "https://www.dirtandgravel.psu.edu/docs/Webinars/Webinar_ASR_Training_1_8_2020.mp4",
+    "notes": "Long webinar; experimental only. Previously failed with media decode limits."
+  }
+]

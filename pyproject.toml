@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llm-bench-toolkit"
+version = "0.2.0"
+description = "Reusable LLM API benchmark toolkit for TTFT, cache, reasoning controls, and video limits"
+requires-python = ">=3.10"
+dependencies = []
+
+[project.scripts]
+llm-bench = "llm_bench.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]

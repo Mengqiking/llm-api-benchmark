@@ -1,0 +1,24 @@
+{
+  "id": "example-gateway",
+  "display_name": "Example Gateway",
+  "base_url": "https://llm.example.com/v1",
+  "default_model": "kimi-k3",
+  "protocols": ["openai"],
+  "api_key_env": "EXAMPLE_GATEWAY_API_KEY",
+  "extra_headers": {
+    "X-Custom-Client": "llm_bench"
+  },
+  "protocol_options": {
+    "openai": {
+      "chat_path": "/chat/completions",
+      "models_path": "/models",
+      "max_tokens_field": "max_completion_tokens",
+      "include_reasoning_effort": true
+    }
+  },
+  "input_token_semantics": {
+    "openai": "includes_cache"
+  },
+  "cache_metric_source": "auto",
+  "gateway_cache_fields": []
+}

@@ -1,0 +1,11 @@
+data: {"choices": [{"delta": {"role": "assistant"}, "index": 0}]}
+
+data: {"choices": [{"delta": {"reasoning_content": "37*41="}, "index": 0}]}
+
+data: {"choices": [{"delta": {"reasoning_content": "1517"}, "index": 0}]}
+
+data: {"choices": [{"delta": {"content": "1517"}, "index": 0}]}
+
+data: {"choices": [{"delta": {}, "index": 0}], "usage": {"prompt_tokens": 30, "completion_tokens": 10, "prompt_tokens_details": {"cached_tokens": 8}}}
+
+data: [DONE]

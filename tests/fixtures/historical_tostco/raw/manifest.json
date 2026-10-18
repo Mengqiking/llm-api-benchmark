@@ -1,0 +1,39 @@
+{
+  "script_version": "3.1-generic",
+  "provider_name": "Tostco",
+  "base_url": "https://tostco.ai/v1",
+  "model": "kimi-k3",
+  "protocols": [
+    "openai",
+    "anthropic"
+  ],
+  "suites": [
+    "cache"
+  ],
+  "timeout": 180,
+  "reasoning_samples": 3,
+  "samples_per_group": 5,
+  "concurrency": [
+    1,
+    4
+  ],
+  "input_sizes": [
+    1024,
+    8192
+  ],
+  "cache_requests": 3,
+  "output_dir": "D:\\Dev\\test\\k3\\tostco\\benchmark_results",
+  "quick": false,
+  "schema_version": 3,
+  "started_at": "2026-10-14T17:56:04.249+08:00",
+  "python": "3.12.10",
+  "platform": "Windows-11-10.0.26200-SP0",
+  "secrets_persisted": false,
+  "completed_at": "2026-10-14T17:56:08.964+08:00",
+  "request_count": 3,
+  "success_count": 3,
+  "failure_count": 0,
+  "suite_status": {
+    "cache": "3/3 成功"
+  }
+}

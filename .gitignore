@@ -1,0 +1,27 @@
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.venv/
+venv/
+
+# Local credentials and environment files
+.env
+.env.*
+!.env.example
+
+# Generated benchmark output
+runs/
+benchmark_results/
+
+# Large, reproducible video-test cache
+.cache/
+video-limit/tools/
+video-limit/runtime/
+video-limit/generated/
+video-limit/real-generated/
+video-limit/runs/
+video-limit/assets/*.mp4
+
+# Local reports
+*.pdf

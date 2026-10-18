@@ -1,0 +1,16 @@
+{
+  "id": "tokenstars",
+  "display_name": "TokenStars",
+  "base_url": "https://api.tokenstars.cn/v1",
+  "default_model": "kimi-k3",
+  "protocols": ["openai", "anthropic"],
+  "api_key_env": "TOKENSTARS_API_KEY",
+  "extra_headers": {},
+  "protocol_options": {},
+  "input_token_semantics": {
+    "anthropic": "excludes_cache",
+    "openai": "includes_cache"
+  },
+  "cache_metric_source": "auto",
+  "gateway_cache_fields": []
+}

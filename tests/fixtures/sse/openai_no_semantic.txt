@@ -1,0 +1,5 @@
+data: {"choices": [{"delta": {"role": "assistant"}, "index": 0}]}
+
+data: {"choices": [{"delta": {}, "index": 0}], "usage": {"prompt_tokens": 9, "completion_tokens": 0}}
+
+data: [DONE]
