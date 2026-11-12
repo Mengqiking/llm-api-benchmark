@@ -141,6 +141,9 @@ def build_summary(rows: list[dict[str, Any]], manifest: dict[str, Any]) -> dict[
         "requests": total,
         "success": success,
         "failure": total - success,
+        "formal_requests": len(formal),
+        "formal_success": len(formal) - formal_failures,
+        "formal_failure": formal_failures,
     }
     core["global_error_rate"] = core["error_rate"]
 

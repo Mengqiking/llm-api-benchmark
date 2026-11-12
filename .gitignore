@@ -9,6 +9,8 @@ venv/
 .env
 .env.*
 !.env.example
+providers-local/
+profiles-local/
 
 # Generated benchmark output
 runs/

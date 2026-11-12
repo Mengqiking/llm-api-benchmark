@@ -5,11 +5,9 @@ Supported layouts (read-only; the original directory is never modified):
 1. raw/manifest.json + raw/requests/*.json   (preferred, full fidelity)
 2. cleaned/requests.json only                (limited: no SSE/TTFT detail)
 
-Token semantics for legacy data are UNKNOWN by default: legacy manifests never
-recorded cache field semantics, and guessing from the protocol name alone is
-not allowed. Token cache hit rates stay N/A until the caller either matches a
-provider config by unique evidence (--provider) or passes an explicit override
-(--input-token-semantics <protocol>=<semantics>).
+New runs retain cache semantics in their manifest. Older data without this
+evidence stays UNKNOWN unless a provider configuration or explicit override
+supplies it. A protocol name alone is never sufficient evidence.
 """
 from __future__ import annotations
 
@@ -18,9 +16,14 @@ from dataclasses import replace
 from pathlib import Path
 from typing import Any
 
-from llm_bench.models import BenchError, ProviderConfig, ResolvedConfig, TestProfile, CacheProfile
+from llm_bench.models import (
+    INPUT_TOKEN_SEMANTICS, SUPPORTED_PROTOCOLS,
+    BenchError, ProviderConfig, ResolvedConfig, TestProfile, CacheProfile,
+)
+from llm_bench.protocols import get_protocol
 from llm_bench.runner import TEST_SUITE, Runner
 from llm_bench.store import sanitize_record
+from llm_bench.transport.sse import parse_sse_lines
 
 
 class LegacyRunError(BenchError):
@@ -120,15 +123,17 @@ def legacy_provider_config(
     """Build the provider used for re-analysis.
 
     Returns (provider, semantics_source) where semantics_source is one of
-    "user_override", "provider_config", "unknown".
+    "user_override", "run_manifest", "provider_config", "unknown".
+    Recorded semantics (including unknown) outrank today's provider config;
+    an explicit per-protocol override is the only way to replace that evidence.
     """
     manifest = manifest or {}
     semantics_source = "unknown"
     if provider is None:
         protocols = [p for p in manifest.get("protocols") or [] if p in ("openai", "anthropic")] or ["openai"]
         provider = ProviderConfig(
-            id=str(manifest.get("provider_name") or run_dir.name).lower().replace(" ", "-") or "legacy",
-            display_name=str(manifest.get("provider_name") or run_dir.name),
+            id=str(manifest.get("provider") or manifest.get("provider_name") or run_dir.name).lower().replace(" ", "-") or "legacy",
+            display_name=str(manifest.get("provider_display_name") or manifest.get("provider_name") or run_dir.name),
             base_url=str(manifest.get("base_url") or "unknown"),
             default_model=str(manifest.get("model") or "unknown"),
             protocols=protocols,
@@ -140,6 +145,16 @@ def legacy_provider_config(
             semantics_source = "provider_config"
         else:
             provider = replace(provider, input_token_semantics=dict(UNKNOWN_LEGACY_SEMANTICS))
+    recorded = manifest.get("input_token_semantics")
+    if recorded is not None:
+        if not isinstance(recorded, dict) or any(
+            protocol not in SUPPORTED_PROTOCOLS or semantics not in INPUT_TOKEN_SEMANTICS
+            for protocol, semantics in recorded.items()
+        ):
+            raise LegacyRunError("manifest.input_token_semantics 必须按协议声明 includes_cache/excludes_cache/unknown")
+        if recorded:
+            provider = replace(provider, input_token_semantics={**provider.input_token_semantics, **recorded})
+            semantics_source = "run_manifest"
     if semantics_override:
         merged = dict(provider.input_token_semantics)
         merged.update(semantics_override)
@@ -254,7 +269,7 @@ def reanalyze_run(
     """Re-analyze a historical run directory without any network access.
 
     Token semantics resolution order: explicit override (--input-token-semantics)
-    > matched provider config (--provider / unique manifest evidence) > unknown.
+    > recorded run manifest > provider config (--provider / unique match) > unknown.
     With unknown semantics no token cache hit rate is produced.
 
     Writes a fresh toolkit-layout directory under output_dir and returns
@@ -332,6 +347,8 @@ def reanalyze_run(
         "legacy_manifest": manifest,
         "legacy_schema_version": (manifest or {}).get("schema_version"),
     }
+    if (manifest or {}).get("data_kind") == "synthetic":
+        new_manifest["data_kind"] = "synthetic"
 
     from llm_bench.reporters import build_summary, render_markdown, write_requests_csv, write_requests_json
 
@@ -348,6 +365,11 @@ def reanalyze_run(
         warnings.append(
             f"缓存字段语义取自 provider 配置（{resolved_provider.id}）："
             "历史运行本身未记录语义，若该配置无数据依据请用 --input-token-semantics 覆盖"
+        )
+    elif semantics_source == "run_manifest":
+        warnings.append(
+            "缓存字段语义沿用原运行 manifest 的声明；如需修正，请用 "
+            "--input-token-semantics <protocol>=<semantics> 显式覆盖并保留依据"
         )
     else:
         warnings.append(

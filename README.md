@@ -2,18 +2,66 @@
 
 配置驱动的 LLM API 基准测试工具包。核心指标优先级：**TTFT** 与 **缓存命中率**。
 
-只使用 Python 标准库（无第三方运行时依赖）。
+Benchmark LLM APIs and inspect streaming latency, cache metrics, and raw request evidence. The offline demo generates reports without an API key.
 
-本目录可以作为独立仓库上传到 GitHub。供应商差异集中在 `providers/*.json`，测试方案集中在 `profiles/*.json`；API Key、生成视频、工具二进制和运行结果均不进入源码仓库。
+只使用 Python 标准库（Python 3.10+，无第三方运行时依赖）。供应商差异集中在 `providers/*.json`，测试方案集中在 `profiles/*.json`；API Key、生成视频、工具二进制和运行结果均不进入源码仓库。
 
-## 一键完整测试
+## 五分钟离线体验
+
+准备 Git 和 Python 3.10+。以下命令适用于 Windows、macOS 和 Linux。如果系统的 Python 命令是 `python3`，替换最后一行的 `python`。
+
+```console
+git clone https://github.com/Mengqiking/llm-api-benchmark.git
+cd llm-api-benchmark
+python scripts/demo.py
+```
+
+**不用安装依赖、不读取 API Key、不加载本地供应商配置、不访问网络。** 命令在 `runs/demo/` 下创建两个新的运行目录，并打印报告、CSV 和 JSON 汇总的完整路径。再次执行会创建新目录，保留先前结果。也可用 `--output ./runs/my-demo` 指定产物根目录。
+
+打开输出中的 `report` 路径即可查看报告。后续重新分析时，将同一组输出里的 `run_dir` 传给 `--run`。
+
+| 项目 | `includes_cache` 示例 | `unknown` 示例 |
+| --- | ---: | ---: |
+| TTFT P50 / P95 | 120 / 240 ms | 120 / 240 ms |
+| latency 有效 / 缺失 TTFT 样本 | 2 / 2 | 2 / 2 |
+| 正式请求错误率 | 12.50%（1 / 8） | 12.50%（1 / 8） |
+| 预热后目标前缀请求命中率 | 66.67%（2 / 3） | 66.67%（2 / 3） |
+| 预热后 Token 缓存命中率 | 56.67%（1700 / 3000） | N/A |
+
+这些数字全部来自**合成响应与预设耗时**，不能作为任何供应商的性能结论。示例故意包含一次 HTTP 429，以及一次 HTTP 200 但没有正文或思考增量的流式响应：前者计入错误率，后者保留为缺失 TTFT，不能拿总耗时冒充首 Token 延迟。另有一条预检记录，所以原始记录共 9 条，正式请求为 8 条。
+
+两个示例只改变缓存字段的解释：已知 `prompt_tokens` 包含缓存时，可以计算 Token 命中率；不知道总输入口径时，保留原始字段并显示 N/A。请求命中率仍可根据“预热读取量是否高于冷启动基线”判断。冷启动基线为 100 Token，预热读取量为 800、800、100；Token 命中率包含全部读取量，报告另列归属于目标前缀的增量。
+
+Demo 复用正式运行的 `Runner → SSE 解析 → 归一化 → Markdown/JSON/CSV` 流程，仅将 HTTP 传输替换为内存中的预设响应。每份结果均包含：
+
+- `manifest.json`：标明 `data_kind: synthetic`、`network_requests_executed: false`。
+- `raw/requests/`：逐请求原始响应和事件时间。
+- `normalized/requests.json`、`requests.csv`：用于核对数字的明细。
+- `normalized/summary.json`、`report/benchmark_report.md`：同一份指标生成的汇总和报告。
+
+## 选择入口
+
+工具提供 Python CLI 和 PowerShell 脚本，结果可用 Markdown 阅读器或表格工具打开。
+
+| 命令 | 用途 | 网络与输出 |
+| --- | --- | --- |
+| `python scripts/demo.py` | 无安装体验完整报告 | 无网络；写入新的合成结果目录 |
+| `python -m llm_bench dry-run ...` | 查看合并后的供应商与测试配置 | 无网络；仅打印配置 |
+| `python -m llm_bench reanalyze ...` | 从已有原始响应重新计算 | 无网络；写入新的分析目录 |
+| `python -m llm_bench report ...` | 从规范化数据重新出报告 | 无网络；写入指定报告目录 |
+| `python -m llm_bench run ...` | 正式性能测试 | **调用供应商 API，可能计费** |
+
+模块命令的环境设置见下方“安装方式”。纯离线验收可以直接运行 `python scripts/check_offline.py`。
+
+## 一键完整测试（会产生真实请求与费用）
+
+以下脚本示例从仓库根目录用 PowerShell 7 执行。
 
 `Run-FullBenchmark.ps1`依次完成 TTFT、缓存、推理强度与独立思考关闭探针、错误率、视频输入上限矩阵，并生成合并报告：
 
 ```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 $env:SHUYANAI_API_KEY = '<your-key>'
-& D:\Dev\test\k3\benchmark-kit\scripts\Run-FullBenchmark.ps1 `
+& .\scripts\Run-FullBenchmark.ps1 `
   -Provider shuyanai `
   -Model kimi-k3
 Remove-Item Env:SHUYANAI_API_KEY -ErrorAction SilentlyContinue
@@ -24,7 +72,7 @@ Remove-Item Env:SHUYANAI_API_KEY -ErrorAction SilentlyContinue
 只检查最终配置和输出位置，不访问网络、不需要 Key：
 
 ```powershell
-& D:\Dev\test\k3\benchmark-kit\scripts\Run-FullBenchmark.ps1 `
+& .\scripts\Run-FullBenchmark.ps1 `
   -Provider shuyanai `
   -Model kimi-k3 `
   -PlanOnly
@@ -42,9 +90,9 @@ Remove-Item Env:SHUYANAI_API_KEY -ErrorAction SilentlyContinue
 ## 目录职责
 
 ```text
-benchmark-kit/
+llm-api-benchmark/
 ├─ pyproject.toml          # 包定义（零运行时依赖）
-├─ scripts/                # 一键完整测试与视频上限入口
+├─ scripts/                # 离线 demo/验收、一键完整测试与视频上限入口
 ├─ video-limit/            # 真实编码视频矩阵、临时 HTTPS 托管与边界报告
 ├─ src/llm_bench/
 │  ├─ cli.py               # 命令行入口（dry-run/run/reanalyze/report）
@@ -70,24 +118,33 @@ benchmark-kit/
 
 ## 安装方式
 
-方式一（推荐，不改环境）——设置 `PYTHONPATH`：
+离线 demo 无需安装。使用其他模块命令时，从仓库根目录选择以下一种方式。
+
+方式一——为当前终端设置 `PYTHONPATH`，不用安装依赖：
 
 ```powershell
-$env:PYTHONPATH = 'D:\Dev\test\k3\benchmark-kit\src'
+$env:PYTHONPATH = (Join-Path (Get-Location) 'src')
 python -m llm_bench --help
 ```
 
-方式二——可编辑安装（获得 `llm-bench` 命令）：
+macOS / Linux：
+
+```bash
+export PYTHONPATH="$PWD/src"
+python3 -m llm_bench --help
+```
+
+方式二——可编辑安装（获得 `llm-bench` 命令；安装构建工具时可能访问包索引）：
 
 ```powershell
-pip install -e D:\Dev\test\k3\benchmark-kit
+python -m pip install -e .
 llm-bench --help
 ```
 
 ## dry-run：查看最终配置，不请求 API
 
 ```powershell
-$env:PYTHONPATH = 'D:\Dev\test\k3\benchmark-kit\src'
+$env:PYTHONPATH = (Join-Path (Get-Location) 'src')
 python -m llm_bench dry-run `
   --provider tostco `
   --model kimi-k3 `
@@ -116,9 +173,8 @@ Remove-Item Env:TOSTCO_API_KEY
 通用入口读取 `providers/` 中的 provider 配置，并复用同一套 60 秒、640×480、25fps、H.264/AAC 真实编码视频。默认依次测试 100、90、80、70、60、50 MiB，同时用 `reasoning_effort=none` 与 `low` 检查独立思考开关。
 
 ```powershell
-Set-ExecutionPolicy -Scope Process -ExecutionPolicy Bypass -Force
 $env:SHUYANAI_API_KEY = '<your-key>'
-& D:\Dev\test\k3\benchmark-kit\scripts\Run-VideoLimit.ps1 `
+& .\scripts\Run-VideoLimit.ps1 `
   -Provider shuyanai `
   -Model kimi-k3
 Remove-Item Env:SHUYANAI_API_KEY -ErrorAction SilentlyContinue
@@ -127,7 +183,7 @@ Remove-Item Env:SHUYANAI_API_KEY -ErrorAction SilentlyContinue
 只生成/复用视频并检查临时公网 URL，不调用模型、不产生模型用量：
 
 ```powershell
-& D:\Dev\test\k3\benchmark-kit\scripts\Run-VideoLimit.ps1 `
+& .\scripts\Run-VideoLimit.ps1 `
   -Provider shuyanai `
   -Model kimi-k3 `
   -PreflightOnly
@@ -139,7 +195,7 @@ Remove-Item Env:SHUYANAI_API_KEY -ErrorAction SilentlyContinue
 - `-ForceReencode`：忽略已有合格视频，重新编码六个档位；默认复用，节省时间。
 - `-ProvidersDir <目录>`：指定自定义 provider 配置目录。
 
-在当前双目录工作区中，结果写入 `../completed-tests/providers/<provider>/video-limit-runs/<timestamp>/`；独立复制本目录时则写入 `runs/video-limit/<provider>/`：
+独立克隆时，结果写入 `runs/video-limit/<provider>/`：
 
 - `benchmark_report.md`：最大成功档位、边界说明、逐档结果、独立思考开关结论。
 - `summary.json`：相同结论的机器可读版本。
@@ -152,25 +208,28 @@ Remove-Item Env:SHUYANAI_API_KEY -ErrorAction SilentlyContinue
 
 ```powershell
 python -m llm_bench reanalyze `
-  --run D:\Dev\test\k3\tostco\benchmark_results\20261014_175604_247854 `
-  --output D:\Dev\test\k3\completed-tests\toolkit-runs\reanalyzed
+  --run '<demo 输出的 run_dir 路径>' `
+  --output .\runs\reanalyzed
 ```
 
 - 读取旧目录的 `raw/manifest.json`、`raw/requests/*.json`（或仅 `cleaned/requests.json`）。
 - 输出全新的统一布局目录；**不修改、不移动原历史目录**。
+- 重复执行会生成新的输出目录；后续 `report --run` 请使用本次输出中的 `output` 路径。
 
-### 历史数据的缓存字段语义（默认 unknown）
+### 缓存字段语义与可复现重分析
 
-历史 manifest 从未记录 `input_tokens` 是否包含缓存 Token，协议名本身不是可 relied 的证据，因此 reanalyze **默认按 `unknown` 处理**：Token 缓存命中率为 `N/A`（不输出伪精确百分比），原始缓存字段原样保留，并在报告中输出明确警告。
+新运行会将每种协议的 `input_token_semantics` 固化到 manifest；默认重分析沿用当时的声明，即使本地 provider 配置后来改变，也不会静默改变原报告的口径。合成数据标记也会保留。
 
-如需得到精确命中率，必须显式指定语义，优先级：**用户覆盖 > provider 配置 > unknown**：
+旧历史 manifest 若未记录 `input_tokens` 是否包含缓存 Token，协议名本身不是证据。没有其他可信声明时按 `unknown` 处理：Token 缓存命中率为 `N/A`，原始字段保留。无效的 manifest 语义值会报告错误，不猜测修正。
+
+各协议语义的优先级：**用户显式覆盖 > 原运行 manifest > provider 配置 > unknown**。原 manifest 明确声明 `unknown` 时也保留该结论；若后来获得依据，用显式覆盖修正：
 
 ```powershell
 # 方式一：--provider 使用 provider 配置中声明的语义（要求有数据依据）
-python -m llm_bench reanalyze --run <历史目录> --provider tostco
+python -m llm_bench reanalyze --run '<历史目录>' --provider '<provider id>'
 
 # 方式二：--input-token-semantics 显式覆盖（可重复；参数非法时退出码 2）
-python -m llm_bench reanalyze --run <历史目录> `
+python -m llm_bench reanalyze --run '<历史目录>' `
   --input-token-semantics anthropic=includes_cache
 
 # 两者同时给出时，覆盖值优先
@@ -178,35 +237,33 @@ python -m llm_bench reanalyze --run <历史目录> `
 
 - 不指定 `--provider` 时，工具仅在 manifest 证据（`provider_name` 或 `base_url`）**唯一匹配**某个 provider 配置时自动采用其声明语义；证据缺失或有歧义（匹配到多个配置）时保持 unknown，绝不猜测。
 - 覆盖值直接决定命中率公式（includes_cache 与 excludes_cache 的结果可能相差近一倍），**必须以供应商官方文档或网关实测数据为依据**；使用覆盖时报告会附"命中率公式随覆盖值改变，请确认有数据依据"的警告。
-- manifest 记录 `input_token_semantics` / `input_token_semantics_source`（`user_override` / `provider_config` / `unknown`）/ `input_token_semantics_override` / `provider_evidence`，便于审计口径来源。
+- manifest 记录 `input_token_semantics` / `input_token_semantics_source`（`user_override` / `run_manifest` / `provider_config` / `unknown`）/ `input_token_semantics_override` / `provider_evidence`，便于审计口径来源。
 
 ## report：根据规范化结果重新生成报告，不访问网络
 
 ```powershell
 python -m llm_bench report `
-  --run D:\Dev\test\k3\completed-tests\toolkit-runs\reanalyzed\20261014_175604_247854 `
-  --output D:\Dev\test\k3\completed-tests\toolkit-runs\reports\tostco-demo
+  --run '<demo 输出的 run_dir，或 reanalyze 输出的 output 路径>' `
+  --output .\runs\reports\example
 ```
 
 要求 `--run` 目录下存在 `normalized/requests.json`（新运行或 reanalyze 的产物）。
 
 ## provider 配置示例
 
-`providers/tostco.json`：
+`examples/custom_provider.json`（节选）：
 
 ```json
 {
-  "id": "tostco",
-  "display_name": "Tostco",
-  "base_url": "https://tostco.ai/v1",
+  "id": "example-gateway",
+  "display_name": "Example Gateway",
+  "base_url": "https://llm.example.com/v1",
   "default_model": "kimi-k3",
-  "protocols": ["openai", "anthropic"],
-  "api_key_env": "TOSTCO_API_KEY",
+  "protocols": ["openai"],
+  "api_key_env": "EXAMPLE_GATEWAY_API_KEY",
   "input_token_semantics": {
-    "anthropic": "unknown",
     "openai": "includes_cache"
-  },
-  "gateway_cache_fields": ["claude_cache_creation_1h_tokens"]
+  }
 }
 ```
 
@@ -339,6 +396,7 @@ python -m llm_bench report `
 ## 安全和脱敏说明
 
 - API Key 只通过环境变量传入，绝不写入配置、代码或文档。
+- 个人供应商和测试配置放在已忽略的 `providers-local/`、`profiles-local/`，通过 `--providers-dir` / `--profiles-dir` 指定；公开示例使用通用配置。忽略规则不能替代发布前的内容与历史检查。
 - 持久化前统一脱敏：
   - 请求/响应头：`Authorization`、`x-api-key`、`Cookie`、`Set-Cookie`、`Proxy-Authorization` 替换为 `[REDACTED]`；
   - URL 查询参数：名字以 `key`/`token`/`secret`/`signature`/`auth` 结尾或属于 `access_token`/`apikey` 等的参数值替换为 `[REDACTED]`（`max_tokens` 等普通参数不受影响）。
@@ -367,30 +425,32 @@ runs/<provider>/<model>/<timestamp>/
 
 全部离线，不需要任何 API Key：
 
-```powershell
-cd D:\Dev\test\k3\benchmark-kit
-$env:PYTHONPATH = 'D:\Dev\test\k3\benchmark-kit\src'
-python -m unittest discover -s tests -v
+```console
+python scripts/check_offline.py
 ```
+
+入口会在禁止创建 socket 和查询 DNS 的条件下执行全套测试。首次体验测试另外在不含供应商配置和 Git 元数据的临时拷贝中，从带空格及中文的路径运行，验证不依赖本机安装或当前工作目录。
+
+`.github/workflows/offline.yml` 配置了 Windows、macOS、Linux 与 Python 3.10/3.12 的矩阵验收。工作流会下载 GitHub Actions 和 Python 运行环境；测试与 demo 不调用供应商 API，也不需要仓库密钥。运行记录见 [GitHub Actions](https://github.com/Mengqiking/llm-api-benchmark/actions/workflows/offline.yml)。
 
 覆盖：配置校验、OpenAI/Anthropic 流式 SSE 语义（含空增量不启动 TTFT）、TTFT eligible 口径与缺失样本、核心 TTFT 优先 latency、双错误率分离、无 None/None 分组、双协议缓存口径、unknown 语义（新运行与历史 reanalyze）、命中率不超 100%、冷启动基线与 target_prefix 判定、流式缓存同时采集 TTFT 与缓存字段、缺 usage 不可统计、cache.stream=false 非流式回退、脱敏、Markdown/JSON/CSV 输出、历史结果 reanalyze（默认 unknown、显式覆盖、provider 唯一证据自动识别、CLI 参数非法退出码 2、原目录不被修改）、dry-run 与 reanalyze 的无网络断言（patch socket）、兼容入口 dry-run。
 
 ## 已知限制
 
+- 合成 demo 只验证解析、指标和报告流程，不验证供应商兼容性、网络性能、缓存是否真实生效或计费。
 - `run`/`reanalyze`/`report` 的并发模型与旧脚本一致：仅 latency 套件按并发等级并行，其余串行。
 - 首字节时间（TTFB）在流式下以首个数据块到达时间为近似值；urllib 不暴露更细的 socket 级时间戳。
-- 历史数据的缓存字段语义**默认按 unknown 处理**（历史 manifest 未记录该信息，协议名不作为证据）：Token 命中率为 N/A，须通过 `--provider` 或 `--input-token-semantics` 显式指定后才会计算，报告中以警告明示口径来源。
+- 历史数据的缓存字段语义没有运行记录、provider 配置或显式覆盖依据时，**按 unknown 处理**；协议名不作为证据，Token 命中率为 N/A。新运行默认沿用 manifest；修正已有声明需用 `--input-token-semantics`，报告保留口径来源。
 - 冷启动基线取成功冷启动请求的最大 `cache_read`；若网关在预热阶段才建立公共前缀缓存，个别 `any` 判定偏保守（宁可少算目标前缀命中，不虚报）。
 - `video` 套件沿用了固定示例视频 URL，仅作能力探测。
 - Windows 控制台以 GBK 显示中文时可能出现乱码，落盘文件均为 UTF-8。
 
 ## 旧脚本迁移说明
 
-| 旧入口 | 状态 | 说明 |
-|---|---|---|
-| `llm_api_benchmark.py` | 兼容入口 | 旧参数继续可用，内部调用统一框架，flat 输出布局，运行时输出弃用提示 |
-| `tostco/tostco_kimi_k3_benchmark.py` | 薄适配器 | 保持不变，继续通过兼容入口工作 |
-| `tockenStars/tokenstars_kimi_k3_benchmark.py` | 历史脚本 | 未改动；新测试请用 `--provider tokenstars` |
-| `july/*` | 历史脚本与结果 | 未改动；其结果可用 `reanalyze` 离线重分析 |
+`llm_api_benchmark.py` 继续支持原有参数与平铺输出布局。新测试使用 `python -m llm_bench`，已有运行结果可用 `reanalyze` 离线重分析。
 
-新开发一律使用 `python -m llm_bench`；旧脚本仅在需要复现历史口径时使用。
+## 许可与贡献
+
+当前仓库尚未声明项目级开源许可证。公开可见不等于已授予复制、修改或再分发许可；许可选择由权利人确认。第三方依赖和引用材料保留各自的权利，不因本次维护而改变。
+
+提交改进时，请附最小合成样例、预期结果和 `python scripts/check_offline.py` 的输出；不提交真实密钥、个人配置或供应商运行结果。

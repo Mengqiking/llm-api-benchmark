@@ -29,6 +29,12 @@ def render_markdown(summary: dict[str, Any]) -> str:
     reasoning_switch = summary.get("reasoning_switch") or {"status": "未测试"}
 
     lines: list[str] = ["# Benchmark 报告", ""]
+    if manifest.get("data_kind") == "synthetic":
+        lines += [
+            "> **合成数据演示 / Synthetic demo**：响应与耗时均为预设样例，未访问 API。",
+            "> 本报告用于了解指标和证据结构，不能作为供应商性能、质量或价格的实测结论。",
+            "",
+        ]
 
     ttft_scope = core.get("ttft_scope")
     scope_note = (
@@ -71,7 +77,13 @@ def render_markdown(summary: dict[str, Any]) -> str:
         f"|独立思考开关|{reasoning_switch.get('status', '未测试')}|"
         f"{reasoning_switch.get('off_attempted', 0)} 个关闭探针|口径：reasoning_effort=none 对比正向推理档位|"
     )
-    lines.append(f"|全局错误率|{_pct(core.get('error_rate'))}|{core.get('requests', 0)}|成功 {core.get('success', 0)}，失败 {core.get('failure', 0)}（不含 preflight）|")
+    formal_requests = core.get("formal_requests", core.get("requests", 0))
+    formal_success = core.get("formal_success", core.get("success", 0))
+    formal_failure = core.get("formal_failure", core.get("failure", 0))
+    lines.append(
+        f"|全局错误率|{_pct(core.get('error_rate'))}|{formal_requests}|"
+        f"成功 {formal_success}，失败 {formal_failure}（不含 preflight）|"
+    )
     lines.append(f"|TTFT 错误率|{_pct(core.get('ttft_error_rate'))}|仅 TTFT eligible 请求|全局错误率与 TTFT 错误率分开统计|")
     lines.append("")
 

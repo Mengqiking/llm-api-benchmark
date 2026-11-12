@@ -94,6 +94,13 @@ def cmd_dry_run(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_demo(args: argparse.Namespace) -> int:
+    from llm_bench.demo import run_demo
+
+    print(json.dumps(run_demo(args.output), ensure_ascii=False, indent=2))
+    return EXIT_OK
+
+
 def cmd_run(args: argparse.Namespace) -> int:
     resolved = _load_resolved(args)
     api_key = args.api_key
@@ -225,6 +232,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--version", action="version", version=f"llm_bench {TOOL_VERSION}")
     sub = parser.add_subparsers(dest="command", required=True)
 
+    demo = sub.add_parser("demo", help="用合成响应生成示例报告，不访问网络、不需要 Key")
+    demo.add_argument("--output", type=Path, default=Path("runs") / "demo",
+                      help="产物根目录；每次创建新的子目录（默认 ./runs/demo）")
+    demo.set_defaults(func=cmd_demo)
+
     dry = sub.add_parser("dry-run", help="解析并显示最终配置，不访问网络")
     _add_config_args(dry)
     dry.set_defaults(func=cmd_dry_run)
@@ -242,7 +254,7 @@ def build_parser() -> argparse.ArgumentParser:
     reana.add_argument("--output", type=Path, default=None,
                        help=f"输出根目录（默认 {DEFAULT_OUTPUT_ROOT / 'reanalyzed'}）")
     reana.add_argument("--provider", default=None,
-                       help="provider id：用其声明的 input_token_semantics 解释历史缓存字段；"
+                       help="provider id：用其声明的 input_token_semantics 补充原 manifest 未记录的缓存语义；"
                             "缺省时仅在 manifest 证据（provider_name/base_url）唯一匹配某个 provider 配置时自动采用")
     reana.add_argument("--providers-dir", type=Path, default=DEFAULT_PROVIDERS_DIR)
     reana.add_argument("--input-token-semantics", type=parse_semantics_override, action="append",

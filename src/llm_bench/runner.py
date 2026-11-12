@@ -427,7 +427,9 @@ class Runner:
         return rows
 
     # ---------------------------------------------------------------- public
-    def run(self, output_root: Path, api_key: str, *, layout: str = "nested") -> tuple[dict[str, Any], RunPaths]:
+    def run(
+        self, output_root: Path, api_key: str, *, layout: str = "nested", synthetic: bool = False,
+    ) -> tuple[dict[str, Any], RunPaths]:
         paths = make_run_paths(output_root, self.provider.id, self.model, layout=layout)
         store = RunStore(paths)
         manifest = {
@@ -442,9 +444,15 @@ class Runner:
             "python": platform.python_version(),
             "platform": platform.platform(),
             "params": self.config.to_dict()["profile"],
+            "input_token_semantics": {
+                protocol: self.provider.semantics_for(protocol)
+                for protocol in self.config.protocols
+            },
             "network_requests_executed": isinstance(self.transport, UrllibTransport),
             "secrets_persisted": False,
         }
+        if synthetic:
+            manifest["data_kind"] = "synthetic"
         store.write_manifest(manifest)
         print(f"结果目录：{paths.root}", flush=True)
 
