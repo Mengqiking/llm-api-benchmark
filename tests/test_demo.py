@@ -151,9 +151,11 @@ class TestDemo(unittest.TestCase):
         )
         self.assertEqual(process.returncode, 0, process.stderr)
         result = json.loads(process.stdout)
+        # Temporary paths can use aliases on Windows and symlinks on macOS.
+        expected_root = (outside / "runs" / "demo").resolve()
         for run in result["runs"].values():
             self.assertTrue(Path(run["report"]).is_file())
-            self.assertTrue(Path(run["run_dir"]).is_relative_to(outside / "runs" / "demo"))
+            self.assertTrue(Path(run["run_dir"]).resolve().is_relative_to(expected_root))
 
 
 if __name__ == "__main__":
